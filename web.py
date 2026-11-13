@@ -11,7 +11,7 @@ from pydantic import BaseModel
 import db
 
 load_dotenv()
-ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
+ADMIN_PASSWORD = os.environ["1234"]
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 UPLOADS = "uploads"
 SESSION = secrets.token_urlsafe(32)  # после перезапуска панели нужно войти снова
