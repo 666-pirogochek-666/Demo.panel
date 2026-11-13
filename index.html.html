@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Лид-бот · панель</title>
+<style>
+:root{--bg:#f5f5f2;--paper:#fff;--ink:#17191c;--mute:#868b93;--line:#e3e4df;--acc:#0e6b5c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif}
+.hidden{display:none!important}
+button,input,textarea{font:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.shell{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+aside{background:var(--paper);border-right:1px solid var(--line);padding:28px 14px}
+aside h1{font-size:15px;font-weight:700;margin:0 10px 26px}
+aside button{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;color:var(--mute);cursor:pointer;border-radius:6px}
+aside button.on{color:var(--ink);box-shadow:inset 2px 0 0 var(--acc)}
+main{padding:36px 44px;max-width:1000px}
+h2{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:0 0 22px}
+.hint{color:var(--mute);font-size:13px;margin:0 0 18px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:34px}
+.stat{padding:18px 16px}
+.stat+.stat{border-left:1px solid var(--line)}
+.num{font-size:34px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.lbl{color:var(--mute);font-size:13px}
+.table{border-top:1px solid var(--line)}
+.table>div{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:9px 11px;background:var(--paper);margin:4px 0 12px;color:var(--ink)}
+textarea{resize:vertical}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:8px 14px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.danger{color:#a1342a}
+.step{padding:20px 0;border-top:1px solid var(--line)}
+.step:last-of-type{border-bottom:1px solid var(--line)}
+.grid3{display:grid;grid-template-columns:150px 1fr 1fr;gap:14px}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.dlg{display:grid;grid-template-columns:260px 1fr;border:1px solid var(--line);background:var(--paper);border-radius:8px;min-height:65vh}
+#ulist{border-right:1px solid var(--line);max-height:70vh;overflow:auto}
+.user{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:12px 14px;cursor:pointer;color:var(--ink)}
+.user.on{background:var(--bg)}
+.user small{display:block;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chat{display:flex;flex-direction:column;padding:14px;min-width:0}
+.msgs{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px 4px;max-height:58vh}
+.b{max-width:76%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;word-break:break-word}
+.in{background:var(--bg);align-self:flex-start}
+.out{background:var(--acc);color:#fff;align-self:flex-end}
+.reply{display:flex;gap:8px;margin-top:10px}
+.reply input{margin:0}
+.login{max-width:300px;margin:18vh auto;padding:0 16px}
+@media(max-width:760px){
+  .shell{grid-template-columns:1fr}
+  aside{display:flex;gap:6px;overflow:auto;padding:10px}
+  aside h1{display:none}
+  aside button{width:auto;white-space:nowrap}
+  main{padding:22px 16px}
+  .stats{grid-template-columns:1fr 1fr}
+  .stat:nth-child(3){border-left:0}
+  .grid3{grid-template-columns:1fr}
+  .dlg{grid-template-columns:1fr}
+  #ulist{border-right:0;border-bottom:1px solid var(--line);max-height:30vh}
+}
+</style>
+</head>
+<body>
+
+<div id="login" class="login hidden">
+  <h2>Вход</h2>
+  <input id="pw" type="password" placeholder="Пароль" onkeydown="if(event.key==='Enter')login()">
+  <button class="btn primary" onclick="login()">Войти</button>
+  <p id="lerr" class="lbl"></p>
+</div>
+
+<div id="app" class="shell hidden">
+  <aside>
+    <h1>Лид-бот</h1>
+    <button data-t="stats" class="on">Статистика</button>
+    <button data-t="steps">Сценарий</button>
+    <button data-t="dialogs">Диалоги</button>
+    <button data-t="bot">Бот</button>
+  </aside>
+
+  <main>
+    <section id="stats" class="hidden"></section>
+
+    <section id="steps" class="hidden">
+      <h2>Сценарий</h2>
+      <p class="hint">Сообщения уходят по порядку. «Задержка» — сколько секунд ждать после предыдущего сообщения.</p>
+      <div id="slist"></div>
+      <div class="actions">
+        <button class="btn" onclick="addStep()">Добавить сообщение</button>
+        <button class="btn primary" onclick="saveSteps()">Сохранить</button>
+        <span id="sst" class="lbl"></span>
+      </div>
+    </section>
+
+    <section id="dialogs" class="hidden">
+      <h2>Диалоги</h2>
+      <div class="dlg">
+        <div id="ulist"></div>
+        <div id="chat"><p class="lbl">Выберите пользователя слева</p></div>
+      </div>
+    </section>
+
+    <section id="bot" class="hidden"></section>
+  </main>
+</div>
+
+<script>
+let steps = [];
+let curUser = null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(url, {method = 'GET', body, form} = {}) {
+  const opt = {method, headers: {}};
+  if (form) opt.body = form;
+  else if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  const r = await fetch(url, opt);
+  if (r.status === 401) { show('login'); throw new Error('Нужен вход'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || 'Что-то пошло не так');
+  return j;
+}
+
+function show(v) {
+  $('#login').classList.toggle('hidden', v !== 'login');
+  $('#app').classList.toggle('hidden', v !== 'app');
+}
+
+async function login() {
+  try {
+    await api('/api/login', {method: 'POST', body: {password: $('#pw').value}});
+    start();
+  } catch (e) { $('#lerr').textContent = e.message; }
+}
+
+function start() { show('app'); go('stats'); }
+
+document.querySelectorAll('aside button').forEach(b => b.onclick = () => go(b.dataset.t));
+
+function go(tab) {
+  document.querySelectorAll('aside button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  ['stats', 'steps', 'dialogs', 'bot'].forEach(s => $('#' + s).classList.toggle('hidden', s !== tab));
+  ({stats: loadStats, steps: loadSteps, dialogs: loadUsers, bot: loadBot})[tab]();
+}
+
+/* Статистика */
+async function loadStats() {
+  const s = await api('/api/stats');
+  const cell = (n, l) => `<div class="stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
+  $('#stats').innerHTML = `
+    <h2>Статистика</h2>
+    <div class="stats">
+      ${cell(s.starts, 'переходы в бота')}
+      ${cell(s.clicks, 'нажатия кнопок')}
+      ${cell(s.subs, 'подписки на канал')}
+      ${cell(s.users, 'пользователей')}
+    </div>
+    <div class="grid3" style="grid-template-columns:1fr 1fr">
+      <div><p class="lbl">Кнопки</p><div class="table">${
+        s.buttons.map(b => `<div><span>${esc(b.label)}</span><b>${b.clicks}</b></div>`).join('') ||
+        '<div class="lbl">Кнопок пока нет</div>'}</div></div>
+      <div><p class="lbl">Переходы за 14 дней</p><div class="table">${
+        s.daily.map(d => `<div><span>${d.day}</span><b>${d.n}</b></div>`).join('') ||
+        '<div class="lbl">Пока нет данных</div>'}</div></div>
+    </div>`;
+}
+
+/* Сценарий */
+async function loadSteps() { steps = await api('/api/steps'); renderSteps(); }
+
+function renderSteps() {
+  $('#slist').innerHTML = steps.map((s, i) => `
+    <div class="step">
+      <label class="lbl">Текст сообщения</label>
+      <textarea rows="3" oninput="steps[${i}].text=this.value">${esc(s.text)}</textarea>
+      <div class="grid3">
+        <div><label class="lbl">Задержка, сек</label>
+          <input type="number" min="0" value="${s.delay_sec}" oninput="steps[${i}].delay_sec=+this.value"></div>
+        <div><label class="lbl">Текст кнопки</label>
+          <input value="${esc(s.btn_text)}" oninput="steps[${i}].btn_text=this.value"></div>
+        <div><label class="lbl">Ссылка кнопки</label>
+          <input value="${esc(s.btn_url)}" placeholder="https://" oninput="steps[${i}].btn_url=this.value"></div>
+      </div>
+      <div class="actions">
+        <span class="lbl">Файл: ${s.file_path ? esc(s.file_path.split('/').pop().replace(/^[0-9a-f]{32}_/, '')) : 'не прикреплён'}</span>
+        <input type="file" style="width:auto;margin:0" onchange="upload(${i}, this.files[0])">
+        ${s.file_path ? `<button class="btn" onclick="steps[${i}].file_path='';renderSteps()">Убрать файл</button>` : ''}
+        <button class="btn" onclick="moveStep(${i}, -1)">Выше</button>
+        <button class="btn" onclick="moveStep(${i}, 1)">Ниже</button>
+        <button class="btn danger" onclick="steps.splice(${i}, 1);renderSteps()">Удалить</button>
+      </div>
+    </div>`).join('') || '<p class="hint">Сценарий пуст. Добавьте первое сообщение.</p>';
+}
+
+function addStep() { steps.push({text: '', file_path: '', delay_sec: 60, btn_text: '', btn_url: ''}); renderSteps(); }
+
+function moveStep(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= steps.length) return;
+  [steps[i], steps[j]] = [steps[j], steps[i]];
+  renderSteps();
+}
+
+async function upload(i, file) {
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await api('/api/upload', {method: 'POST', form: fd});
+    steps[i].file_path = r.path;
+    renderSteps();
+  } catch (e) { $('#sst').textContent = e.message; }
+}
+
+async function saveSteps() {
+  try {
+    await api('/api/steps', {method: 'PUT', body: steps});
+    $('#sst').textContent = 'Сохранено';
+  } catch (e) { $('#sst').textContent = e.message; }
+}
+
+/* Диалоги */
+async function loadUsers() {
+  const users = await api('/api/users');
+  $('#ulist').innerHTML = users.map(u => `
+    <button class="user ${u.user_id === curUser ? 'on' : ''}" onclick="openDialog(${u.user_id})">
+      <b>${esc(u.name || 'Без имени')}</b>${u.username ? ` <span class="lbl">@${esc(u.username)}</span>` : ''}
+      <small>${esc((u.last_text || '').slice(0, 60))}</small>
+    </button>`).join('') || '<p class="hint" style="padding:14px">Пока никто не заходил в бота</p>';
+}
+
+async function openDialog(id) {
+  curUser = id;
+  loadUsers();
+  const msgs = await api('/api/dialog/' + id);
+  $('#chat').innerHTML = `
+    <div class="msgs" id="msgs">${msgs.map(m =>
+      `<div class="b ${m.direction === 'in' ? 'in' : 'out'}">${esc(m.text)}</div>`).join('')}</div>
+    <div class="reply">
+      <input id="reply" placeholder="Написать от бота" onkeydown="if(event.key==='Enter')sendReply()">
+      <button class="btn primary" onclick="sendReply()">Отправить</button>
+    </div>`;
+  const box = $('#msgs');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendReply() {
+  const text = $('#reply').value.trim();
+  if (!text) return;
+  try {
+    await api('/api/send', {method: 'POST', body: {user_id: curUser, text}});
+    openDialog(curUser);
+  } catch (e) { alert(e.message); }
+}
+
+/* Бот */
+async function loadBot() {
+  const s = await api('/api/settings');
+  $('#bot').innerHTML = `
+    <h2>Бот</h2>
+    <p class="hint">Когда бот выключен, новые пользователи не получают сценарий.
+      Уже запланированные сообщения тоже не уходят, пока бот не включён.</p>
+    <div class="table" style="margin-bottom:18px"><div><span>Статус</span><b>${s.bot_enabled ? 'Работает' : 'Выключен'}</b></div></div>
+    <button class="btn ${s.bot_enabled ? 'danger' : 'primary'}" onclick="toggleBot(${!s.bot_enabled})">
+      ${s.bot_enabled ? 'Выключить бота' : 'Включить бота'}</button>`;
+}
+
+async function toggleBot(v) {
+  try {
+    await api('/api/settings', {method: 'PUT', body: {bot_enabled: v}});
+    loadBot();
+  } catch (e) { alert(e.message); }
+}
+
+/* Старт */
+(async () => {
+  try { await api('/api/stats'); start(); }
+  catch (e) { show('login'); }
+})();
+</script>
+</body>
+</html>
